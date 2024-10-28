@@ -1,0 +1,25 @@
+/* App.css */
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f8f9fa;
+}
+
+.container {
+  max-width: 400px;
+  margin: auto;
+  padding-top: 100px;
+}
+
+.login-form {
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: #fff;
+}
+
+h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+}
