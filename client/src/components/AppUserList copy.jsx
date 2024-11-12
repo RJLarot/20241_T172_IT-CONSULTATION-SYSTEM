@@ -1,35 +1,36 @@
 import React, { useState, useEffect } from 'react'; // mag import React and hooks
 import 'bootstrap/dist/css/bootstrap.min.css'; // mag import Bootstrap CSS for styling
-
+import axios from 'axios';
+import Select from 'react-select';
 
 function AppUserList() {
     const [students, setStudents] = useState([]); // state para mag store sa list of students
     const [totalUsers, setTotalUsers] = useState(null); // state to store the total number of users
-
+    const [percentageChange, setPercentageChange] = useState(0); // Percentage change (you can calculate this if needed)
+    const [totalStudents, setTotalStudents] = useState(null); // State to store the total number of students
+    const [totalFaculty, setTotalFaculty] = useState(null); // State to store the total number of faculty
     const [totalFirstYearStudents, setTotalFirstYearStudents] = useState(null); // null for loading state
     const [totalSecondYearStudents, setTotalSecondYearStudents] = useState(null); // null for loading state
     const [totalThirdYearStudents, setTotalThirdYearStudents] = useState(null); // null for loading state
     const [totalFourthYearStudents, setTotalFourthYearStudents] = useState(null); // null for loading state
     const [limit, setLimit] = useState(5); // Default to 5 students
 
-
     
     // Function to fetch students data
     const fetchStudents = async () => {
       try {
-          const response = await fetch('http://localhost:5000/api/students');
+          const response = await fetch('http://localhost:5000/api/students'); // API call to fetch students
           if (!response.ok) {
               throw new Error('Failed to fetch students');
           }
           const data = await response.json();
-          console.log(data); // Log response data to inspect the result
-          const filteredStudents = data.filter(student => student.role === 'student');
+          const filteredStudents = data.filter(student => student.role === 'student'); // Filter only students
           setStudents(filteredStudents); // Set filtered students data in state
       } catch (error) {
           console.error('Error fetching students:', error);
       }
   };
-  
+
     const fetchTotalFirstYearStudents = async () => {
       try {
         const response = await fetch('http://localhost:5000/api/students/total/first-year');
@@ -104,14 +105,15 @@ function AppUserList() {
 
     // useEffect to fetch data on component mount
     useEffect(() => {
-      console.log('useEffect executed');
-      fetchStudents(); // call fetchStudents to get the student data
-      fetchTotalUsers(); // Call function to get total users
-      fetchTotalFirstYearStudents();
-      fetchTotalSecondYearStudents();
-      fetchTotalThirdYearStudents();
-      fetchTotalFourthYearStudents();
-  }, []);  // empty dependency array means this runs only once
+      
+        fetchStudents(); // call fetchStudents to get the student data
+        fetchTotalUsers(); // Call function to get total users
+        fetchTotalFirstYearStudents();
+        fetchTotalSecondYearStudents();
+        fetchTotalThirdYearStudents();
+        fetchTotalFourthYearStudents();
+
+    }, []);  // empty dependency array means this runs only once
 
     // Slice the students array based on the limit
     const limitedStudents = students.slice(0, limit);
@@ -128,27 +130,40 @@ function AppUserList() {
     year_level: '',
     section: '',
     topics_or_subjects: '',
-    academic_year: '',
   });
   
-
-  const [inputValue, setInputValue] = useState(''); // Initialize with an empty string or a default value
-
-  const handleChange = (e) => {
-    setInputValue(e.target.value); // Set the state when input changes
+  const currentYear = new Date().getFullYear();
+  const [startYear, setStartYear] = useState(currentYear);
+  const [endYear, setEndYear] = useState(currentYear);
+  
+  // Generate year options from 10 years ago to the current year
+  const years = [];
+  for (let year = currentYear - 10; year <= currentYear; year++) {
+    years.push(year);
+  }
+  
+  // Handle year start change
+  const handleStartYearChange = (event) => {
+    setStartYear(event.target.value);
+  };
+  
+  // Handle year end change
+  const handleEndYearChange = (event) => {
+    setEndYear(event.target.value);
   };
   
   // Handle input changes for the new student form
-  const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    setNewStudent({
-      ...newStudent,
-      [name]: value,  // Update the specific field (academic_year)
-    });
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewStudent((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
   
-  const handleAddStudent = async (e) => {
-    e.preventDefault(); // Prevent default form submission behavior
+   // Handle form submission to add a new student
+   const handleAddStudent = async (e) => {
+    e.preventDefault();
   
     // Validate required fields before submitting
     if (!newStudent.name || !newStudent.email || !newStudent.school_id) {
@@ -157,6 +172,7 @@ function AppUserList() {
     }
   
     try {
+      // Send the request to the backend API
       const response = await fetch('http://localhost:5000/api/register/student', {
         method: 'POST',
         headers: {
@@ -165,90 +181,56 @@ function AppUserList() {
         body: JSON.stringify(newStudent),
       });
   
+      // Check if the response is successful
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Failed to add student: ${errorData.message || 'Unknown error'}`);
+        throw new Error('Failed to add student');
       }
   
+      // Parse the response if needed
       const result = await response.json();
-      console.log('Student added successfully:', result);
+  
+      // Handle the response from the server
+      console.log(result); // Optionally log the result to see the server's response
+  
+      // Optionally reset the form or show a success message
       alert('Student added successfully!');
-  
-      // Assuming the backend returns the new student data with the correct timestamp
-      setStudents(prevStudents => [result.newStudent, ...prevStudents]); // Add new student on top
-  
-      // Reset form fields after successful submission
       setNewStudent({
-        school_id: '',
         name: '',
         email: '',
-        password: '',
-        contact_number: '',
+        school_id: '',
         program: '',
         year_level: '',
         section: '',
         topics_or_subjects: '',
-        academic_year: '',
+        // Reset other fields if needed
       });
-  
     } catch (error) {
       console.error('Error adding student:', error);
       alert('An error occurred while adding the student.');
     }
   };
 
-//DELETE ========================================
-const [deleteId, setDeleteId] = useState('');
-const handleDeleteChange = (e) => {
-  setDeleteId(e.target.value);
-};
+//PUT ===============
 const [newStudentPut, setNewStudentPut] = useState({
-  id: '',
-  school_id: '',
+  id: '', 
   name: '',
-  email: '',
-  password: '',
-  contact_number: '',
-  program: '',
-  year_level: '',
+  gender: '',
   section: '',
-  topics_or_subjects: '',
-  academic_year: ''
+  hobby: ''
 });
-// Handle the form submission for deletion
-const handleDeleteSubmit = async (e) => {
-  e.preventDefault();
-  
-  try {
-    // Send the DELETE request to the backend API
-    const response = await fetch(`http://localhost:5000/api/users/${deleteId}`, {
-      method: 'DELETE',
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to delete student');
-    }
-    
-    // Refresh the list of students
-    await fetchStudents();
-    
-    // Reset the delete ID input
-    setDeleteId('');
-    
-  } catch (error) {
-    console.error('Error deleting student:', error);
-  }
-};
-//END DELETE======================
-
-const handleInputChangePut = (e) => {
-  const { name, value } = e.target;
-  setNewStudentPut(prevState => ({
-    ...prevState,
-    [name]: value,
+const handleInputChangePut = (e) => { //handle changes in the input fields
+  const { name, value} = e.target;
+  setNewStudentPut((prev) => ({
+    ...prev, //Retain previous state values
+    [name]: value //Update only the specific property
   }));
 };
-//UPDATE==========================
+
+//Log the state whenever it updates
+useEffect(() => {
+  console.log('Update state:', newStudentPut);
+}, [newStudentPut]);
+
 const handleUpdateSubmit = async (e) => {
   e.preventDefault();
   try {
@@ -269,8 +251,30 @@ const handleUpdateSubmit = async (e) => {
   }
 };
 
+//DELETE ========================================
+const [deleteId, setDeleteId] = useState('');
+const handleDeleteChange = (e) => {
+  setDeleteId(e.target.value);
+};
+  const handleDeleteSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const response = await fetch(`http://localhost:5000/api/users/${deleteId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to delete student');
+    }
+    await fetchStudents(); // Refresh the list of students
+    setDeleteId('')
+  } catch (error) {
+    console.error('Error deleting student:', error);
+  }
+};
 
-return (
+
+
+  return (
 <div>
   <meta charSet="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
@@ -284,7 +288,8 @@ return (
   <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet" />
   {/* Icons */}
   <link rel="stylesheet" href="assets/vendor/fonts/boxicons.css" />
-
+  <link rel="stylesheet" href="assets/vendor/fonts/fontawesome.css" />
+  <link rel="stylesheet" href="assets/vendor/fonts/flag-icons.css" />
   {/* Core CSS */}
   <link rel="stylesheet" href="assets/vendor/css/rtl/core.css" className="template-customizer-core-css" />
   <link rel="stylesheet" href="assets/vendor/css/rtl/theme-default.css" className="template-customizer-theme-css" />
@@ -298,12 +303,58 @@ return (
   <link rel="stylesheet" href="assets/vendor/libs/select2/select2.css" />
   <link rel="stylesheet" href="assets/vendor/libs/formvalidation/dist/css/formValidation.min.css" />
   
+  {/* Page CSS */}
+  {/* Helpers */}
+  {/*! Template customizer & Theme config files MUST be included after core stylesheets and helpers.js in the <head> section */}
+  {/*? Template customizer: To hide customizer set displayCustomizer value false in config.js.  */}
+  {/*? Config:  Mandatory theme config file contain global vars & default theme options, Set your preferred theme option in this file.  */}
   {/* Layout wrapper */}
   <div className="layout-wrapper layout-content-navbar">
     <div className="layout-container">
       {/* Menu */}
       <aside id="layout-menu" className="layout-menu menu-vertical menu bg-menu-theme">
-      
+        <div className="app-brand demo">
+          <a href="index.html" className="app-brand-link">
+            <span className="app-brand-logo demo">
+              <svg width={25} viewBox="0 0 25 42" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink">
+                <defs>
+                  <path d="M13.7918663,0.358365126 L3.39788168,7.44174259 C0.566865006,9.69408886 -0.379795268,12.4788597 0.557900856,15.7960551 C0.68998853,16.2305145 1.09562888,17.7872135 3.12357076,19.2293357 C3.8146334,19.7207684 5.32369333,20.3834223 7.65075054,21.2172976 L7.59773219,21.2525164 L2.63468769,24.5493413 C0.445452254,26.3002124 0.0884951797,28.5083815 1.56381646,31.1738486 C2.83770406,32.8170431 5.20850219,33.2640127 7.09180128,32.5391577 C8.347334,32.0559211 11.4559176,30.0011079 16.4175519,26.3747182 C18.0338572,24.4997857 18.6973423,22.4544883 18.4080071,20.2388261 C17.963753,17.5346866 16.1776345,15.5799961 13.0496516,14.3747546 L10.9194936,13.4715819 L18.6192054,7.984237 L13.7918663,0.358365126 Z" id="path-1" />
+                  <path d="M5.47320593,6.00457225 C4.05321814,8.216144 4.36334763,10.0722806 6.40359441,11.5729822 C8.61520715,12.571656 10.0999176,13.2171421 10.8577257,13.5094407 L15.5088241,14.433041 L18.6192054,7.984237 C15.5364148,3.11535317 13.9273018,0.573395879 13.7918663,0.358365126 C13.5790555,0.511491653 10.8061687,2.3935607 5.47320593,6.00457225 Z" id="path-3" />
+                  <path d="M7.50063644,21.2294429 L12.3234468,23.3159332 C14.1688022,24.7579751 14.397098,26.4880487 13.008334,28.506154 C11.6195701,30.5242593 10.3099883,31.790241 9.07958868,32.3040991 C5.78142938,33.4346997 4.13234973,34 4.13234973,34 C4.13234973,34 2.75489982,33.0538207 2.37032616e-14,31.1614621 C-0.55822714,27.8186216 -0.55822714,26.0572515 -4.05231404e-15,25.8773518 C0.83734071,25.6075023 2.77988457,22.8248993 3.3049379,22.52991 C3.65497346,22.3332504 5.05353963,21.8997614 7.50063644,21.2294429 Z" id="path-4" />
+                  <path d="M20.6,7.13333333 L25.6,13.8 C26.2627417,14.6836556 26.0836556,15.9372583 25.2,16.6 C24.8538077,16.8596443 24.4327404,17 24,17 L14,17 C12.8954305,17 12,16.1045695 12,15 C12,14.5672596 12.1403557,14.1461923 12.4,13.8 L17.4,7.13333333 C18.0627417,6.24967773 19.3163444,6.07059163 20.2,6.73333333 C20.3516113,6.84704183 20.4862915,6.981722 20.6,7.13333333 Z" id="path-5" />
+                </defs>
+                <g id="g-app-brand" stroke="none" strokeWidth={1} fill="none" fillRule="evenodd">
+                  <g id="Brand-Logo" transform="translate(-27.000000, -15.000000)">
+                    <g id="Icon" transform="translate(27.000000, 15.000000)">
+                      <g id="Mask" transform="translate(0.000000, 8.000000)">
+                        <mask id="mask-2" fill="white">
+                          <use xlinkHref="#path-1" />
+                        </mask>
+                        <use fill="#696cff" xlinkHref="#path-1" />
+                        <g id="Path-3" mask="url(#mask-2)">
+                          <use fill="#696cff" xlinkHref="#path-3" />
+                          <use fillOpacity="0.2" fill="#FFFFFF" xlinkHref="#path-3" />
+                        </g>
+                        <g id="Path-4" mask="url(#mask-2)">
+                          <use fill="#696cff" xlinkHref="#path-4" />
+                          <use fillOpacity="0.2" fill="#FFFFFF" xlinkHref="#path-4" />
+                        </g>
+                      </g>
+                      <g id="Triangle" transform="translate(19.000000, 11.000000) rotate(-300.000000) translate(-19.000000, -11.000000) ">
+                        <use fill="#696cff" xlinkHref="#path-5" />
+                        <use fillOpacity="0.2" fill="#FFFFFF" xlinkHref="#path-5" />
+                      </g>
+                    </g>
+                  </g>
+                </g>
+              </svg>
+            </span>
+            <span className="app-brand-text demo menu-text fw-bolder ms-2">Sneat</span>
+          </a>
+          <a href="#" className="layout-menu-toggle menu-link text-large ms-auto">
+            <i className="bx bx-chevron-left bx-sm align-middle" />
+          </a>
+        </div>
         <div className="menu-inner-shadow" />
         <ul className="menu-inner py-1">
 
@@ -312,11 +363,7 @@ return (
 
           {/* Apps & Pages */}
           <li className="menu-header small text-uppercase">
-<<<<<<< HEAD
-            <span className="menu-header-text">Admin Dashboard</span>
-=======
             <span className="menu-header-text">Apps &amp; Pages</span>
->>>>>>> 545bcf5dbc654b69adb0e67944cb5d5f813a7e55
           </li>
      
           
@@ -326,15 +373,39 @@ return (
               <div data-i18n="Tables">Student</div>
             </a>
           </li>
-<<<<<<< HEAD
+
+       
+          {/* Tables */}
           <li className="menu-item">
-          <a href="/facultyadmindashboard" className="menu-link">
-            <i className="menu-icon tf-icons bx bx-user"></i>
-              <div data-i18n="Tables">Faculty</div>
+            <a href="tables-basic.html" className="menu-link">
+              <i className="menu-icon tf-icons bx bx-table" />
+              <div data-i18n="Tables">Tables</div>
             </a>
           </li>
-=======
->>>>>>> 545bcf5dbc654b69adb0e67944cb5d5f813a7e55
+          <li className="menu-item">
+            <a href="#" className="menu-link menu-toggle">
+              <i className="menu-icon tf-icons bx bx-grid" />
+              <div data-i18n="Datatables">Datatables</div>
+            </a>
+            <ul className="menu-sub">
+              <li className="menu-item">
+                <a href="tables-datatables-basic.html" className="menu-link">
+                  <div data-i18n="Basic">Basic</div>
+                </a>
+              </li>
+              <li className="menu-item">
+                <a href="tables-datatables-advanced.html" className="menu-link">
+                  <div data-i18n="Advanced">Advanced</div>
+                </a>
+              </li>
+              <li className="menu-item">
+                <a href="tables-datatables-extensions.html" className="menu-link">
+                  <div data-i18n="Extensions">Extensions</div>
+                </a>
+              </li>
+            </ul>
+          </li>
+
         </ul>
       </aside>
       
@@ -342,14 +413,120 @@ return (
 {/* Layout container */}
 <div className="layout-page">
   {/* Navbar */}
-  
+  <nav className="layout-navbar container-xxl navbar navbar-expand-xl navbar-detached align-items-center bg-navbar-theme" id="layout-navbar">
+    <div className="layout-menu-toggle navbar-nav align-items-xl-center me-3 me-xl-0 d-xl-none">
+      <a className="nav-item nav-link px-0 me-xl-4" href="#" onClick={(e) => e.preventDefault()}>
+        <i className="bx bx-menu bx-sm" />
+      </a>
+    </div>
+    <div className="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
+
+
+            <ul className="navbar-nav flex-row align-items-center ms-auto">
+       
+              {/* Style Switcher */}
+              <li className="nav-item me-2 me-xl-0">
+                <a className="nav-link style-switcher-toggle hide-arrow" href="#">
+                  <i className="bx bx-sm" />
+                </a>
+              </li>
+              {/*/ Style Switcher */}
+              
+              
+              
+              {/* User */}
+              <li className="nav-item navbar-dropdown dropdown-user dropdown">
+                <a className="nav-link dropdown-toggle hide-arrow" href="#" data-bs-toggle="dropdown">
+                  <div className="avatar avatar-online">
+                    <img src="assets/img/avatars/1.png" alt="true" className="w-px-40 h-auto rounded-circle" />
+                  </div>
+                </a>
+                <ul className="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <a className="dropdown-item" href="pages-account-settings-account.html">
+                      <div className="d-flex">
+                        <div className="flex-shrink-0 me-3">
+                          <div className="avatar avatar-online">
+                            <img src="assets/img/avatars/1.png" alt="true" className="w-px-40 h-auto rounded-circle" />
+                          </div>
+                        </div>
+                        <div className="flex-grow-1">
+                          <span className="fw-semibold d-block">John Doe</span>
+                          <small className="text-muted">Admin</small>
+                        </div>
+                      </div>
+                    </a>
+                  </li>
+                  <li>
+                    <div className="dropdown-divider" />
+                  </li>
+                  <li>
+                    <a className="dropdown-item" href="pages-profile-user.html">
+                      <i className="bx bx-user me-2" />
+                      <span className="align-middle">My Profile</span>
+                    </a>
+                  </li>
+                  <li>
+                    <a className="dropdown-item" href="pages-account-settings-account.html">
+                      <i className="bx bx-cog me-2" />
+                      <span className="align-middle">Settings</span>
+                    </a>
+                  </li>
+                  <li>
+                    <a className="dropdown-item" href="pages-account-settings-billing.html">
+                      <span className="d-flex align-items-center align-middle">
+                        <i className="flex-shrink-0 bx bx-credit-card me-2" />
+                        <span className="flex-grow-1 align-middle">Billing</span>
+                        <span className="flex-shrink-0 badge badge-center rounded-pill bg-danger w-px-20 h-px-20">4</span>
+                      </span>
+                    </a>
+                  </li>
+                  <li>
+                    <div className="dropdown-divider" />
+                  </li>
+                  <li>
+                    <a className="dropdown-item" href="pages-help-center-landing.html">
+                      <i className="bx bx-support me-2" />
+                      <span className="align-middle">Help</span>
+                    </a>
+                  </li>
+                  <li>
+                    <a className="dropdown-item" href="pages-faq.html">
+                      <i className="bx bx-help-circle me-2" />
+                      <span className="align-middle">FAQ</span>
+                    </a>
+                  </li>
+                  <li>
+                    <a className="dropdown-item" href="pages-pricing.html">
+                      <i className="bx bx-dollar me-2" />
+                      <span className="align-middle">Pricing</span>
+                    </a>
+                  </li>
+                  <li>
+                    <div className="dropdown-divider" />
+                  </li>
+                  <li>
+                    <a className="dropdown-item" href="auth-login-cover.html" target="_blank">
+                      <i className="bx bx-power-off me-2" />
+                      <span className="align-middle">Log Out</span>
+                    </a>
+                  </li>
+                </ul>
+              </li>
+              {/*/ User */}
+            </ul>
+            
+          </div>
+          {/* Search Small Screens */}
+        
+        </nav>
         {/* / Navbar */}
         {/* Content wrapper */}
         <div className="content-wrapper">
           {/* Content */}
           <div className="container-xxl flex-grow-1 container-p-y">
             {/* {Cards} */}
-            <div className="row g-4 mb-4">
+              <div className="row g-4 mb-4">
                 <div className="col-sm-6 col-xl-3">
                   <div className="card">
                     <div className="card-body">
@@ -442,7 +619,6 @@ return (
                 </div>
               </div>
             </div>
-
             {/* Users List Table */}
             <div className="container mt-1"> 
       {/* <h1 className="text-center mb-5">Student Management</h1> */}
@@ -517,7 +693,7 @@ return (
       <div className="row">
 
 
-{/* Add Student Form */}
+      {/* Add Student Form */}
       <div className="col-md-4">
         <h4>Add User</h4>
         <form onSubmit={handleAddStudent}>
@@ -651,10 +827,8 @@ return (
               <option value="Capstone 1">Capstone 1</option>
             </select>
           </div>
-
-          <div className="mb-3">
+          {/* <div className="mb-3">
             <label htmlFor="academic_year" className="form-label">Academic Year</label>
-            <small> "2014-2015"</small>
             <input
               type="text"
               className="form-control"
@@ -664,210 +838,151 @@ return (
               onChange={handleInputChange}
               required
             />
-          </div>
+          </div> */}
+
+<div className="mb-3">
+    <label htmlFor="startYear" className="form-label">Select Year Range</label>
+    <div className="d-flex">
+      <select
+        id="startYear"
+        className="form-control"
+        value={startYear}
+        onChange={handleStartYearChange}
+      >
+        {years.map((year) => (
+          <option key={year} value={year}>
+            {year}
+          </option>
+        ))}
+      </select>
+      <select
+        id="endYear"
+        className="form-control ms-2"
+        value={endYear}
+        onChange={handleEndYearChange}
+        min={startYear}
+      >
+        {years.map((year) => (
+          <option key={year} value={year}>
+            {year}
+          </option>
+        ))}
+      </select>
+    </div>
+  </div>
+
+
 
           <button type="submit" className="btn btn-primary">Add Student</button>
         </form>
       </div>
 
- {/* Update Student Form */}
-<div className="col-md-4">
-  <h4>Update User</h4>
-  <form onSubmit={handleUpdateSubmit}>
-    <div className="mb-3">
-      <label htmlFor="updateSchoolId" className="form-label">School ID</label>
-      <input
-        type="text"
-        className="form-control"
-        id="updateSchoolId"
-        name="school_id"
-        value={newStudentPut.school_id}
-        onChange={handleInputChangePut}
-        required
-      />
-    </div>
-    
-    <div className="mb-3">
-      <label htmlFor="updateName" className="form-label">Name</label>
-      <input
-        type="text"
-        className="form-control"
-        id="updateName"
-        name="name"
-        value={newStudentPut.name}
-        onChange={handleInputChangePut}
-        required
-      />
-    </div>
-    
-    <div className="mb-3">
-      <label htmlFor="updateEmail" className="form-label">Email</label>
-      <input
-        type="email"
-        className="form-control"
-        id="updateEmail"
-        name="email"
-        value={newStudentPut.email}
-        onChange={handleInputChangePut}
-        required
-      />
-    </div>
-    
-    <div className="mb-3">
-      <label htmlFor="updatePassword" className="form-label">Password</label>
-      <input
-        type="password"
-        className="form-control"
-        id="updatePassword"
-        name="password"
-        value={newStudentPut.password}
-        onChange={handleInputChangePut}
-        required
-      />
-    </div>
-    
-    <div className="mb-3">
-      <label htmlFor="updateContactNumber" className="form-label">Contact Number</label>
-      <input
-        type="text"
-        className="form-control"
-        id="updateContactNumber"
-        name="contact_number"
-        value={newStudentPut.contact_number}
-        onChange={handleInputChangePut}
-        required
-      />
-    </div>
-    
-    <div className="mb-3">
-      <label htmlFor="updateProgram" className="form-label">Program</label>
-      <select
-        className="form-select"
-        id="updateProgram"
-        name="program"
-        value={newStudentPut.program}
-        onChange={handleInputChangePut}
-        required
-      >
-        <option value="">Select Program</option>
-        <option value="BSIT">BSIT</option>
-        <option value="BSCS">BSCS</option>
-        {/* Add other programs here */}
-      </select>
-    </div>
 
-    <div className="mb-3">
-      <label htmlFor="updateYearLevel" className="form-label">Year Level</label>
-      <select
-        className="form-select"
-        id="updateYearLevel"
-        name="year_level"
-        value={newStudentPut.year_level}
-        onChange={handleInputChangePut}
-        required
-      >
-        <option value="">Select Year Level</option>
-        <option value="1st year">1st year</option>
-        <option value="2nd year">2nd year</option>
-        <option value="3rd year">3rd year</option>
-        <option value="4th year">4th year</option>
-      </select>
-    </div>
+        {/* Update Student Form */}
+        <div className="col-md-4">
+          <h4>Update User</h4>
+          <form onSubmit = {handleUpdateSubmit}>
+            <div className="mb-3">
+              <label htmlFor="updateId" className="form-label">Student ID</label>
+              <input
+                type="text"
+                className="form-control"
+                id="updateId"
+                name="id"
+                required
+                onChange = {handleInputChangePut}
+              />
+            </div>
+            <div className="mb-3">
+              <label htmlFor="updateName" className="form-label">Name</label>
+              <input
+                type="text"
+                className="form-control"
+                name="name"
+                id="updateName"
+                onChange={handleInputChangePut}
+              />
+            </div>
+            <div className="mb-3">
+              <label htmlFor="updateGender" className="form-label">Gender</label>
+              <select
+                className="form-select"
+                name="gender"
+                id="updateGender"
+                onChange={handleInputChangePut}
+              >
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </div>
+            <div className="mb-3">
+              <label htmlFor="updateSection" className="form-label">Section</label>
+              <input
+                type="text"
+                className="form-control"
+                name="section"
+                id="updateSection"
+                onChange={handleInputChangePut}
+              />
+              
+            </div>
+            <div className="mb-3">
+              <label htmlFor="updateHobby" className="form-label">Hobby</label>
+              <input
+                type="text"
+                className="form-control"
+                id="updateHobby"
+                name="hobby"
+                onChange={handleInputChangePut}
+              />
+            </div>
+            <div className="mb-3">
+              <button type="submit" className="btn btn-warning">Update</button>
+            </div>
+          </form>
+        </div>
 
-    <div className="mb-3">
-      <label htmlFor="updateSection" className="form-label">Section</label>
-      <input
-        type="text"
-        className="form-control"
-        id="updateSection"
-        name="section"
-        value={newStudentPut.section}
-        onChange={(e) => {
-          // Automatically convert to uppercase and limit to 1 character
-          const value = e.target.value.toUpperCase().slice(0, 1);
-          setNewStudentPut({
-            ...newStudentPut,
-            section: value,
-          });
-        }}
-        maxLength={1} // Limits input to 1 character
-        required
-      />
-    </div>
-
-    <div className="mb-3">
-      <label htmlFor="updateSubjects" className="form-label">Subjects</label>
-      <select
-        className="form-select"
-        id="updateSubjects"
-        name="topics_or_subjects"
-        value={newStudentPut.topics_or_subjects}
-        onChange={handleInputChangePut}
-        required
-      >
-        <option value="Integrative Programming">Integrative Programming</option>
-        <option value="Technopreneurship">Technopreneurship</option>
-        <option value="Advanced Database and Systems">Advanced Database and Systems</option>
-        <option value="Capstone 1">Capstone 1</option>
-      </select>
-    </div>
-
-    <div className="mb-3">
-      <label htmlFor="updateAcademicYear" className="form-label">Academic Year</label>
-      <small> "2014-2015"</small>
-      <input
-        type="text"
-        className="form-control"
-        id="updateAcademicYear"
-        name="academic_year"
-        value={newStudentPut.academic_year}
-        onChange={handleInputChangePut}
-        required
-      />
-    </div>
-
-    <button type="submit" className="btn btn-warning">Update Student</button>
-  </form>
-</div>
-
-
-
-{/* Delete Student Form */}
-<div className="col-md-4">
-    <h4>Delete User</h4>
-    <form onSubmit={handleDeleteSubmit}>
-      <div className="mb-3">
-        <label htmlFor="deleteId" className="form-label">Student ID</label>
-        <input
-          type="text"
-          className="form-control"
-          id="deleteId"
-          value={deleteId}
-          onChange={handleDeleteChange}
-          required
-        />
-      </div>
-      <div className="mb-3">
-        <button type="submit" className="btn btn-danger">Delete</button>
-      </div>
-    </form>
-  </div>
-
+        {/* Delete Student Form */}
+        <div className="col-md-4">
+          <h4>Delete User</h4>
+          <form onSubmit = {handleDeleteSubmit}>
+            <div className="mb-3">
+              <label htmlFor="deleteId" className="form-label">Student ID</label>
+              <input
+                type="text"
+                className="form-control"
+                id="deleteId"
+                value={deleteId}
+                onChange = {handleDeleteChange}
+                required
+              />
+            </div>
+            <div className="mb-3">
+              <button type="submit" className="btn btn-danger">Delete</button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>                  
           </div>
-
+          {/* / Content */}         
           <div className="content-backdrop fade" />
         </div>
-
+        {/* Content wrapper */}
       </div>
- 
+      {/* / Layout page */}
     </div>
-
+    {/* Overlay */}
     <div className="layout-overlay layout-menu-toggle" />
-
+    {/* Drag Target Area To SlideIn Menu On Small Screens */}
     <div className="drag-target" />
   </div>
+  {/* / Layout wrapper */}
+  {/* Core JS */}
+  {/* Vendors JS */}
+  {/* Main JS */}
+  {/* Page JS */}
 </div>
 
 
