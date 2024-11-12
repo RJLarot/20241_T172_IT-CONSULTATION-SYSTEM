@@ -39,7 +39,7 @@ const AuthLoginBasic = () => {
       }
 
       // Redirect after successful login
-      navigate('/dashboard'); // Change this to your desired route
+      navigate('/studentadmindashboard'); // Change this to your desired route
     } catch (error) {
       console.error('Error logging in:', error.response ? error.response.data : error.message);
       setError('Login failed. Please check your credentials.'); // More descriptive error handling
