@@ -312,11 +312,7 @@ return (
 
           {/* Apps & Pages */}
           <li className="menu-header small text-uppercase">
-<<<<<<< HEAD
             <span className="menu-header-text">Admin Dashboard</span>
-=======
-            <span className="menu-header-text">Apps &amp; Pages</span>
->>>>>>> 545bcf5dbc654b69adb0e67944cb5d5f813a7e55
           </li>
      
           
@@ -326,15 +322,12 @@ return (
               <div data-i18n="Tables">Student</div>
             </a>
           </li>
-<<<<<<< HEAD
           <li className="menu-item">
           <a href="/facultyadmindashboard" className="menu-link">
             <i className="menu-icon tf-icons bx bx-user"></i>
               <div data-i18n="Tables">Faculty</div>
             </a>
           </li>
-=======
->>>>>>> 545bcf5dbc654b69adb0e67944cb5d5f813a7e55
         </ul>
       </aside>
       
