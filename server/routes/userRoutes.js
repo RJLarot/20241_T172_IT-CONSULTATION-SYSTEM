@@ -130,30 +130,9 @@ router.post('/forgot-password', async (req, res) => {
     }
 });
 
-router.put('/api/users/:school_id', async (req, res) => {
-    const { school_id } = req.params;
-    console.log('School ID:', school_id);  // Log the school_id
-    console.log('Request Body:', req.body);  // Log the data sent in the body
-    
-    const updatedData = req.body;
-  
-    try {
-      const student = await User.findOneAndUpdate({ school_id }, updatedData, {
-        new: true,
-        runValidators: true,
-      });
-  
-      if (!student) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-  
-      res.json(student);
-    } catch (error) {
-      console.error('Error updating student:', error);
-      res.status(500).json({ message: 'Server error' });
-    }
-  });
-  
+// Route to update user by school_id
+router.put('/users/:school_id', updateUserById);  // Replaced with controller function
+
 // Admin-only route to get all users (add middleware for authentication if necessary)
 router.get('/users', getAllUsers);
 router.get('/users/total', getTotalUsers);

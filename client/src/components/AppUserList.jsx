@@ -249,23 +249,24 @@ const handleInputChangePut = (e) => {
   }));
 };
 //UPDATE==========================
-const handleUpdateSubmit = async (e) => {
-  e.preventDefault();
+const handleUpdateSubmit = async (updatedUser) => {
   try {
-    const response = await fetch(`http://localhost:5000/api/users/${newStudentPut.id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(newStudentPut)
-    });
-    console.log(newStudentPut.gender)
-    if (!response.ok){
-      throw new Error ('Failed to update student');
-    }
-    await fetchStudents(); //refresh the list of students
+      const response = await fetch(`http://localhost:5000/api/users/${updatedUser.school_id}`, {
+          method: 'PUT',
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatedUser),
+      });
+
+      if (!response.ok) {
+          throw new Error('Failed to update student');
+      }
+
+      const result = await response.json();
+      console.log('Student updated:', result);
   } catch (error) {
-    console.error('Error updating student: ', error);
+      console.error('Error updating student:', error);
   }
 };
 

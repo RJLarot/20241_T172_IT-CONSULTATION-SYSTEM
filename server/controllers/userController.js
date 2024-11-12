@@ -111,28 +111,29 @@ exports.getUserById = async (req, res) => {
     }
 };
 
-
-
 exports.updateUserById = async (req, res) => {
     const { school_id } = req.params;
+    console.log('School ID:', school_id);  // Log the school_id received in the request
+
     const updatedData = req.body;
-  
     try {
-      const user = await User.findOneAndUpdate({ school_id }, updatedData, {
-        new: true, // Returns the updated document
-        runValidators: true, // Applies any schema validation
-      });
-  
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-  
-      res.json(user);
+        const user = await User.findOneAndUpdate({ school_id }, updatedData, {
+            new: true,
+            runValidators: true,
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json(user);
     } catch (error) {
-      console.error('Error updating user:', error);
-      res.status(500).json({ message: 'Server error' });
+        console.error('Error updating user:', error);
+        res.status(500).json({ message: 'Server error' });
     }
-  };
+};
+
+
 // Delete a user by school_id
 exports.deleteUserById = async (req, res) => {
     try {
