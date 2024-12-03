@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google'; // Import GoogleLogin 
+import DataTable from 'datatables.net-react';
+import DT from 'datatables.net-dt';
+import ReCAPTCHA from "react-google-recaptcha";
 
+DataTable.use(DT);
 const AuthLoginBasic = () => {
   const [email, setEmail] = useState(''); // Changed to email
   const [password, setPassword] = useState('');
@@ -10,6 +14,9 @@ const AuthLoginBasic = () => {
   const [showPassword, setShowPassword] = useState(false); // State for showing password
   const [rememberMe, setRememberMe] = useState(false); // Remember me state
   const navigate = useNavigate(); // Initialize useNavigate
+  const [isVerified, setIsVerified] = useState(false); // State for reCAPTCHA verification
+  const [captchaToken, setCaptchaToken] = useState(''); // State for reCAPTCHA token
+  
 
   // Load saved email from localStorage on component mount
   useEffect(() => {
@@ -20,57 +27,67 @@ const AuthLoginBasic = () => {
     }
   }, []);
 
-  // Handle traditional login
-  const handleLogin = async (e) => {
-    e.preventDefault(); // Prevent the default form submission
-    console.log('Form submitted'); // Check if this gets logged
-    try {
-      const response = await axios.post('http://localhost:5000/api/login', { // Use /api/login
-        email, // Use email here
-        password,
-      });
-      console.log(response.data); // handle successful login (e.g., store token, redirect)
+  const handleCaptchaChange = (token) => {
+    console.log("Captcha Token:", token); // Debugging
+    setCaptchaToken(token); // Save token
+    setIsVerified(!!token); // Set to true if token exists
+  };
+  
+   
 
-      // Save email if Remember Me is checked
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    console.log("Captcha Token at Submission:", captchaToken); // Debugging
+
+    // Ensure the captcha has been completed
+    if (!captchaToken) {
+      setError('Please complete the captcha.');
+      return;
+    }
+
+    try {
+      const response = await axios.post('http://localhost:5000/api/login', {
+        email,
+        password,
+        captchaToken, // Send captchaToken to the backend
+      });
+
       if (rememberMe) {
-        localStorage.setItem('email', email); // Updated to email
+        localStorage.setItem('email', email);
       } else {
-        localStorage.removeItem('email'); // Clear saved email
+        localStorage.removeItem('email');
       }
 
-      // Redirect after successful login
-      navigate('/studentadmindashboard'); // Change this to your desired route
+      navigate('/studentadmindashboard');
     } catch (error) {
       console.error('Error logging in:', error.response ? error.response.data : error.message);
-      setError('Login failed. Please check your credentials.'); // More descriptive error handling
+      setError('Login failed. Please check your credentials.');
     }
   };
-
-  // Handle Google Sign-In success
-  const handleGoogleSignIn = async (response) => {
-    const tokenId = response.credential; // This is the ID token
-
-    console.log('ID Token:', tokenId);
-
-    // Send ID Token to your backend for verification
-    try {
-      const backendResponse = await axios.post('http://localhost:5000/api/google-login', { idToken: tokenId });
-      console.log('Backend Response:', backendResponse.data);
-
-      // Redirect to dashboard after successful backend authentication
-      navigate('/dashboard');
-    } catch (error) {
-      console.error('Error during backend authentication:', error);
-      setError('Google Sign-In failed. Please try again.');
-    }
-  };
-
-  // Handle Google Sign-In error
-  const handleGoogleError = (error) => {
-    console.log('Google Login Error:', error);
-    setError('Google Login failed. Please try again.');
-  };
-
+  
+    const handleGoogleSignIn = async (response) => {
+      if (!isVerified) {
+        setError("Please verify the reCAPTCHA to proceed.");
+        return;
+      }
+  
+      const tokenId = response.credential;
+      console.log('ID Token:', tokenId);
+  
+      try {
+        const backendResponse = await axios.post('http://localhost:5000/api/google-login', { idToken: tokenId });
+        console.log('Backend Response:', backendResponse.data);
+        navigate('/dashboard');
+      } catch (error) {
+        console.error('Error during backend authentication:', error);
+        setError('Google Sign-In failed. Please try again.');
+      }
+    };
+  
+    const handleGoogleError = (error) => {
+      console.log('Google Login Error:', error);
+      setError('Google Login failed. Please try again.');
+    };
 
   
   return (
@@ -119,38 +136,7 @@ const AuthLoginBasic = () => {
             <div className="app-brand justify-content-center">
               <a href="index.html" className="app-brand-link gap-2">
                 <span className="app-brand-logo demo">
-                  {/* <svg width={25} viewBox="0 0 25 42" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink">
-                    <defs>
-                      <path d="M13.7918663,0.358365126 L3.39788168,7.44174259 C0.566865006,9.69408886 -0.379795268,12.4788597 0.557900856,15.7960551 C0.68998853,16.2305145 1.09562888,17.7872135 3.12357076,19.2293357 C3.8146334,19.7207684 5.32369333,20.3834223 7.65075054,21.2172976 L7.59773219,21.2525164 L2.63468769,24.5493413 C0.445452254,26.3002124 0.0884951797,28.5083815 1.56381646,31.1738486 C2.83770406,32.8170431 5.20850219,33.2640127 7.09180128,32.5391577 C8.347334,32.0559211 11.4559176,30.0011079 16.4175519,26.3747182 C18.0338572,24.4997857 18.6973423,22.4544883 18.4080071,20.2388261 C17.963753,17.5346866 16.1776345,15.5799961 13.0496516,14.3747546 L10.9194936,13.4715819 L18.6192054,7.984237 L13.7918663,0.358365126 Z" id="path-1" />
-                      <path d="M5.47320593,6.00457225 C4.05321814,8.216144 4.36334763,10.0722806 6.40359441,11.5729822 C8.61520715,12.571656 10.0999176,13.2171421 10.8577257,13.5094407 L15.5088241,14.433041 L18.6192054,7.984237 C15.5364148,3.11535317 13.9273018,0.573395879 13.7918663,0.358365126 C13.5790555,0.511491653 10.8061687,2.3935607 5.47320593,6.00457225 Z" id="path-3" />
-                      <path d="M7.50063644,21.2294429 L12.3234468,23.3159332 C14.1688022,24.7579751 14.397098,26.4880487 13.008334,28.506154 C11.6195701,30.5242593 10.3099883,31.790241 9.07958868,32.3040991 C5.78142938,33.4346997 4.13234973,34 4.13234973,34 C4.13234973,34 2.75489982,33.0538207 2.37032616e-14,31.1614621 C-0.55822714,27.8186216 -0.55822714,26.0572515 -4.05231404e-15,25.8773518 C0.83734071,25.6075023 2.77988457,22.8248993 3.3049379,22.52991 C3.65497346,22.3332504 5.05353963,21.8997614 7.50063644,21.2294429 Z" id="path-4" />
-                      <path d="M20.6,7.13333333 L25.6,13.8 C26.2627417,14.6836556 26.0836556,15.9372583 25.2,16.6 C24.8538077,16.8596443 24.4327404,17 24,17 L14,17 C12.8954305,17 12,16.1045695 12,15 C12,14.5672596 12.1403557,14.1461923 12.4,13.8 L17.4,7.13333333 C18.0627417,6.24967773 19.3163444,6.07059163 20.2,6.73333333 C20.3516113,6.84704183 20.4862915,6.981722 20.6,7.13333333 Z" id="path-5" />
-                    </defs>
-                    <g id="g-app-brand" stroke="none" strokeWidth={1} fill="none" fillRule="evenodd">
-                      <g id="Brand-Logo" transform="translate(-27.000000, -15.000000)">
-                        <g id="Icon" transform="translate(27.000000, 15.000000)">
-                          <g id="Mask" transform="translate(0.000000, 8.000000)">
-                            <mask id="mask-2" fill="white">
-                              <use xlinkHref="#path-1" />
-                            </mask>
-                            <use fill="#696cff" xlinkHref="#path-1" />
-                            <g id="Path-3" mask="url(#mask-2)">
-                              <use fill="#696cff" xlinkHref="#path-3" />
-                              <use fillOpacity="0.2" fill="#FFFFFF" xlinkHref="#path-3" />
-                            </g>
-                            <g id="Path-4" mask="url(#mask-2)">
-                              <use fill="#696cff" xlinkHref="#path-4" />
-                              <use fillOpacity="0.2" fill="#FFFFFF" xlinkHref="#path-4" />
-                            </g>
-                          </g>
-                          <g id="Triangle" transform="translate(19.000000, 11.000000) rotate(-300.000000) translate(-19.000000, -11.000000) ">
-                            <use fill="#696cff" xlinkHref="#path-5" />
-                            <use fillOpacity="0.2" fill="#FFFFFF" xlinkHref="#path-5" />
-                          </g>
-                        </g>
-                      </g>
-                    </g>
-                  </svg> */}
+                 
                 </span>
                 {/* <span className="appp-brand-text demo text-body fw-bolder">ConsultEase</span> */}
               </a>
@@ -212,10 +198,33 @@ const AuthLoginBasic = () => {
                     <label className="form-check-label" htmlFor="remember-me"> Remember Me </label>
                   </div               >
               </div>
+              <div style={{ marginTop: "20px", marginBottom: "20px", display: "flex", justifyContent: "center" }}>
+              <ReCAPTCHA
+  sitekey="6LfYa4YqAAAAACwKqbwlXqecTZsyjFY2eG_-KZ_Q"
+  onChange={(token) => {
+    console.log("Captcha Token:", token); // Debugging
+    setCaptchaToken(token);
+    setIsVerified(!!token); // Set to true if token exists
+  }}
+  onExpired={() => {
+    setCaptchaToken('');
+    setIsVerified(false); // Reset verification status if captcha expires
+  }}
+/>
+
+        </div>
               <div className="mb-3">
-                <button className="btn btn-primary d-grid w-100" type="submit">Sign in</button>
+              <button 
+  className="btn btn-primary d-grid w-100" 
+  type="submit" 
+  disabled={!isVerified} // Disable button if not verified
+>
+  Sign in
+</button>
+
               </div>
             </form>
+            {error && <p style={{ color: 'red' }}>{error}</p>}
             <p className="text-center">
             <span>New on our platform? </span>
             <a href="/register">

@@ -2,26 +2,25 @@ import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import * as XLSX from 'xlsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEye, faEdit, faChevronUp, faChevronDown, faIdBadge, faUser, faBook, faCalendarAlt, faBuilding, faCogs } from '@fortawesome/free-solid-svg-icons';
+import { faEye, faEdit, faPlus, faChevronUp, faChevronDown } from '@fortawesome/free-solid-svg-icons';
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import './sortingcolumn.css';
 import Swal from 'sweetalert2';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
-import 'boxicons/css/boxicons.min.css';
-
 
 // Import FontAwesomeIcon component
 
 // Import the specific icons you are using
 import { faCheckCircle, faTrash, faExclamationTriangle, faInfoCircle, faCog } from '@fortawesome/free-solid-svg-icons';
 
-const AppUserList = () => {
+const StudentConsultation = () => {
   // State hooks to manage different parts of the component's state
   const [loading, setLoading] = useState(true); // Loading state
   const [students, setStudents] = useState([]); // List of students
   const [limit, setLimit] = useState(5); // Number of students per page
   const [searchQuery, setSearchQuery] = useState(''); // Search query for filtering students
+  const [faculty, setFaculty] = useState([]); // State to store faculty data
   const [newStudent, setNewStudent] = useState({
     school_id: '',
     name: '',
@@ -34,6 +33,7 @@ const AppUserList = () => {
     topics_or_subjects: '',
     academic_year: '',
   });
+  
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1); // Current page for pagination
   const [itemsPerPage] = useState(5); // Number of items per page for pagination
@@ -43,7 +43,8 @@ const AppUserList = () => {
   const [isHovered, setIsHovered] = useState(false); // Hover state for UI interactions
   const [showViewModal, setShowViewModal] = useState(false); // Modal visibility for viewing student
   const [selectedStudent, setSelectedStudent] = useState(null); // Selected student for view/update actions
-  
+  const [selectedFaculty, setSelectedFaculty] = useState(null); // Selected student for view/update actions
+
   const [formData, setFormData] = useState({
     school_id: '',
     name: '',
@@ -58,21 +59,44 @@ const AppUserList = () => {
 
 
   useEffect(() => {
-    if (selectedStudent) {
+    if (selectedFaculty) {
       setFormData({
-        schoolId: selectedStudent.school_id || '',
-        name: selectedStudent.name || '',
-        email: selectedStudent.email || '',
-        contactNumber: selectedStudent.contact_number || '',
-        program: selectedStudent.program || '',
-        yearLevel: selectedStudent.year_level || '',
-        section: selectedStudent.section || '',
-        topicsOrSubjects: selectedStudent.topics_or_subjects.join(', ') || '', // Assuming it's an array
-        academicYear: selectedStudent.academic_year || '',
+        schoolId: selectedFaculty.school_id || '',
+        name: selectedFaculty.name || '',
+        email: selectedFaculty.email || '',
+        contactNumber: selectedFaculty.contact_number || '',
+        program: selectedFaculty.program || '',
+        yearLevel: selectedFaculty.year_level || '',
+        section: selectedFaculty.section || '',
+        topicsOrSubjects: selectedFaculty.topics_or_subjects.join(', ') || '', // Assuming it's an array
+        academicYear: selectedFaculty.academic_year || '',
       });
     }
-  }, [selectedStudent]); // Run when selectedStudent changes //UPDATE NI SIYA
+  }, [selectedFaculty]); // Run when selectedStudent changes //UPDATE NI SIYA
+
+
+    // Fetch faculty data from the backend
+    useEffect(() => {
+      const fetchFaculty = async () => {
+        try {
+          const response = await fetch('http://localhost:5000/api/faculty');
+          const data = await response.json();
   
+          // If the response has data, update the faculty state
+          if (Array.isArray(data)) {
+            setFaculty(data);
+          } else {
+            console.log('No faculty members found');
+          }
+        } catch (error) {
+          console.error('Error fetching faculty data:', error);
+        } finally {
+          setLoading(false); // Set loading to false once data is fetched
+        }
+      };
+  
+      fetchFaculty();
+    }, []); 
   // Effect to fetch students on component mount
   useEffect(() => {
     fetchStudents();
@@ -112,7 +136,7 @@ const AppUserList = () => {
     doc.line(14, 28, 195, 28);
 
     const columns = ["ID", "Name", "Program", "Year", "Section"];
-    const data = students.map(student => [student.school_id, student.name, student.program, student.year_level, student.section]);
+    const data = faculty.map(faculty => [faculty.school_id, faculty.name, faculty.program, faculty.year_level, faculty.section]);
 
     doc.autoTable({ head: [columns], body: data, startY: 20, theme: "grid", margin: { top: 10, left: 10, right: 10, bottom: 10 } });
     doc.save("student-list.pdf");
@@ -170,15 +194,15 @@ const AppUserList = () => {
 
   // Handle the view action for a student
   const handleView = (schoolId) => {
-    const student = currentStudents.find(student => student.school_id === schoolId);
-    setSelectedStudent(student);
+    const faculty = currentFaculty.find(faculty => faculty.school_id === schoolId);
+    setSelectedFaculty(faculty);
     setShowViewModal(true); // Open the View Modal
   };
 
   // Close the View Modal
   const handleCloseViewModal = () => {
     setShowViewModal(false);
-    setSelectedStudent(null);
+    setSelectedFaculty(null);
   };
 
 //ADD STUDENT FUNCTION
@@ -252,17 +276,6 @@ const handleAddStudent = async (e) => {
   }
 };
 const [showModal, setShowModal] = useState(false); // Matches modal state
-const handleInputChange = (e, type) => {
-  const { name, value } = e.target;
-
-  // Update the state for 'add' or other types
-  if (type === 'add') {
-    setNewStudent((prevState) => ({
-      ...prevState,
-      [name]: value,
-    }));
-  }
-};
 
 
 const handleInputChangePut = (e) => {
@@ -338,7 +351,7 @@ const handleUpdateSubmit = async (event) => {
         alert('Student ID is missing');
         return;
       }
-      
+
       const response = await fetch(`http://localhost:5000/api/users/${studentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -473,47 +486,15 @@ const [totalFourthYearStudents, setTotalFourthYearStudents] = useState(null); //
 //CARDS DASHBOARD
 
 
-//Dark Mode & Light Mode
-const [isDarkMode, setIsDarkMode] = useState(false);
-
-// Define styles for both dark and light themes
-const darkModeStyles = {
-  backgroundColor: '#121212',
-  color: '#fff',
-};
-
-const lightModeStyles = {
-  backgroundColor: '#ffffff',
-  color: '#000',
-};
-
-const menuItemStyles = {
-  color: isDarkMode ? '#fff' : '#000',
-  backgroundColor: isDarkMode ? '#343a40' : '#f1f1f1',
-  padding: '10px',
-  borderRadius: '5px',
-};
-
-// Effect to apply the dark or light theme when state changes
-useEffect(() => {
-  const body = document.body;
-  if (isDarkMode) {
-    body.style.backgroundColor = darkModeStyles.backgroundColor;
-    body.style.color = darkModeStyles.color;
-  } else {
-    body.style.backgroundColor = lightModeStyles.backgroundColor;
-    body.style.color = lightModeStyles.color;
-  }
-}, [isDarkMode]);
-
-
 return (
 <div>
+   {/* Fonts */}
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin ="true"/>
   <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet" />
+  {/* Icons */}
   <link rel="stylesheet" href="assets/vendor/fonts/boxicons.css" /> 
-  <link rel="stylesheet" href="assets/vendor/fonts/boxicons.woff2" /> 
+  {/* Core CSS */}
   <link rel="stylesheet" href="assets/vendor/css/rtl/core.css" className="template-customizer-core-css" />
   <link rel="stylesheet" href="assets/vendor/css/rtl/theme-default.css" className="template-customizer-theme-css" />
   <link rel="stylesheet" href="assets/css/demo.css" />
@@ -521,7 +502,7 @@ return (
   <link rel="stylesheet"href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.8.1/font/bootstrap-icons.min.css" rel="stylesheet"/>
 
-
+  {/* Layout wrapper */}
 
   {/* Layout wrapper */}
   <div className="layout-wrapper layout-content-navbar">
@@ -578,13 +559,13 @@ return (
     <li className="menu-item">
       <a href="/studentconsultation" className="menu-link" style={{ color: '#fff' }}>
       <i className="menu-icon tf-icons bx bx-file"></i>
-
         <div data-i18n="Tables" style={{ color: '#fff' }}>Consult Now!</div>
       </a>
     </li>
     {/* <li className="menu-item">
       <a href="/bookappointment" className="menu-link" style={{ color: '#fff' }}>
       <i className="menu-icon tf-icons bx bx-calendar"></i>
+
         <div data-i18n="Tables" style={{ color: '#fff' }}>Book Appointment</div>
       </a>
     </li> */}
@@ -597,8 +578,7 @@ return (
 
   </ul>
 </aside>
-
-   
+      
 {/* / Menu */}
 {/* Layout container */}
 <div className="layout-page">
@@ -607,102 +587,53 @@ return (
         <div className="content-wrapper">
           {/* Content */}
           <div className="container-xxl flex-grow-1 container-p-y">
-          <nav aria-label="breadcrumb">
-  <ol className="breadcrumb">
-    <li className="breadcrumb-item"><a href="/studentadmindashboard">Admin</a></li>
-    <li className="breadcrumb-item"><a href="/studentadmindashboard">Add Student</a></li>
-    {/* <li className="breadcrumb-item active" aria-current="page">Add Student</li> */}
-  </ol>
-</nav>
+{/* {Cards} */}
+{/* {Cards} */}
+<div className="row g-4 mb-4">
+  <div className="col-12">
+    <div className="card border-light rounded" style={{ height: '100%' }}>
+      <div className="card-body">
+        <div className="d-flex flex-column justify-content-between" style={{ height: '100%' }}>
 
-            {/* {Cards} */}
-            <div className="row g-4 mb-4">
-                <div className="col-sm-6 col-xl-3">
-                  <div className="card">
-                    <div className="card-body">
-                      <div className="d-flex align-items-start justify-content-between">
+          {/* Content Area */}
+          <div className="d-flex align-items-center">
+            {/* Left Side: Image/Icon */}
+            <div className="icon-container" style={{ marginRight: '1rem' }}>
+              <img 
+                // src="./assets/img/icons/unicons/community.png" 
+                src="./assets/img/icons/brands/booking.png" 
+                alt="Consultation Icon" 
+                style={{ width: '60px', height: '60px' }} 
+              />
+            </div>
 
-                       <div className="content-left">
-                          <span style={{ fontWeight: 'bold' }}>1st Year</span>
-                          <div className="d-flex align-items-end mt-2">
-                          <h4 className="mb-0 me-2">{totalFirstYearStudents ? totalFirstYearStudents.toLocaleString() : 'Loading...'}</h4>
-                            {/* <small class="text-success">(+29%)</small> */}
-                          </div>
-                          <small>Total Students </small>
-                        </div>
-                        <span className="badge bg-label-primary rounded p-2">
-                          <i className="bx bx-user bx-sm"></i>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-sm-6 col-xl-3">
-                <div className="card">
-                  <div className="card-body">
-                    <div className="d-flex align-items-start justify-content-between">
-                      <div className="content-left">
-                      <span style={{ fontWeight: 'bold' }}>2nd Year</span>
-                        <div className="d-flex align-items-end mt-2">
-                        <h4 className="mb-0 me-2">{totalSecondYearStudents ? totalSecondYearStudents.toLocaleString() : 'Loading...'}</h4>
-                          {/* <small className="text-success">(+18%)</small> */}
-                        </div>
-                        <small>Total Students </small>
-                      
-
-                      </div>
-                      <span className="badge bg-label-danger rounded p-2">
-                        <i className="bx bx-user bx-sm" />
-                        {/* <span class="year-badge">2nd Year</span> */}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-sm-6 col-xl-3">
-                <div className="card">
-                  <div className="card-body">
-                    <div className="d-flex align-items-start justify-content-between">
-                      <div className="content-left">
-                        <span style={{ fontWeight: 'bold' }}>3rd Year</span>
-                        <div className="d-flex align-items-end mt-2">
-                        <h4 className="mb-0 me-2">{totalThirdYearStudents ? totalThirdYearStudents.toLocaleString() : 'Loading...'}</h4>
-                          {/* <small className="text-danger">(-14%)</small> */}
-                        </div>
-                        <small>Total Students </small>
-                      </div>
-                      <span className="badge bg-label-success rounded p-2">
-                      <i className="bx bx-user bx-sm" />
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-sm-6 col-xl-3">
-                <div className="card">
-                  <div className="card-body">
-                    <div className="d-flex align-items-start justify-content-between">
-                      <div className="content-left">
-                      <span style={{ fontWeight: 'bold' }}>4th Year</span>
-                        <div className="d-flex align-items-end mt-2">
-                        <h4 className="mb-0 me-2">{totalFourthYearStudents ? totalFourthYearStudents.toLocaleString() : 'Loading...'}</h4>
-                          {/* <small className="text-success">(+42%)</small> */}
-                        </div>
-                        <small>Total Students </small>
-                      </div>
-                      <span className="badge bg-label-warning rounded p-2">
-                      <i className="bx bx-user bx-sm" />
-                      </span>
-                    </div>
-                  </div>
+            {/* Right Side: Text Content */}
+            <div className="content-left">
+              <div className="d-flex flex-column align-items-start mt-3">
+                <div style={{ marginBottom: '', textAlign: 'left' }}>
+                  <h2 style={{ fontSize: '1.75rem', fontWeight: '600', color: '#343a40' }}>Book a Consultation</h2>
+                  <p style={{ fontSize: '1rem', color: '#6c757d' }}>
+                    Fill in the details below and choose a time slot for your appointment with a faculty member.
+                  </p>
                 </div>
               </div>
             </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+         
 
 {/* USERS LIST TABLE */}
 <div className="container mt-1"> 
 {/* <h1 className="text-center mb-5">Student Management</h1> */}
-<h4>Student Table</h4> 
+
 {/* Row for Search and Limit Dropdown */}
 <div className="d-flex mb-3 align-items-center justify-content-between">
 
@@ -739,205 +670,6 @@ return (
 
 
 
-{/* Add Student Button */}
-<button 
-type="submit" className="btn btn-primary mb-3" onClick={handleOpenAddModal} >   Add Student <i className="bi bi-plus-circle ms-2"></i>
-</button>
-{showAddModal && (
-  <div className="modal show" style={{ display: "block" }}>
-    <div
-      className="modal-dialog modal-lg"
-      onClick={(e) => e.stopPropagation()} // Ensures inner clicks don't close modal
-    >
-      <div className="modal-content">
-        <div className="modal-header">
-          <h5 className="modal-title">Add Student</h5>
-          <button
-            type="button"
-            className="btn-close"
-            onClick={handleCloseAddModal}
-            aria-label="Close"
-          ></button>
-        </div>
-        <div className="modal-body">
-          {/* Error Alert */}
-          {error && <div className="alert alert-danger">{error}</div>}
-          {/* Add Student Form */}
-
-          {/* Show loading spinner if loading is true */}
-      {loading && (
-        <div className="loading-overlay">
-          <div className="spinner"></div>
-        </div>
-      )}
-          <form onSubmit={handleAddStudent}>
-            <div className="row">
-              <div className="col-md-6 mb-3">
-                <label htmlFor="school_id" className="form-label">School ID</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  id="school_id"
-                  name="school_id"
-                  value={newStudent.school_id}
-                  onChange={(e) => handleInputChange(e, 'add')}
-                  required
-                />
-              </div>
-              <div className="col-md-6 mb-3">
-                <label htmlFor="name" className="form-label">Name</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  id="name"
-                  name="name"
-                  value={newStudent.name}
-                  onChange={(e) => handleInputChange(e, 'add')}
-                  required
-                />
-              </div>
-            </div>
-
-
- 
-
-            <div className="row">
-              <div className="col-md-6 mb-3">
-                <label htmlFor="email" className="form-label">Email</label>
-                <input
-                  type="email"
-                  className="form-control"
-                  id="email"
-                  name="email"
-                  value={newStudent.email}
-                  onChange={(e) => handleInputChange(e, 'add')}
-                  required
-                />
-              </div>
-              <div className="col-md-6 mb-3">
-                <label htmlFor="password" className="form-label">Password</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  id="password"
-                  name="password"
-                  value={newStudent.password}
-                  onChange={(e) => handleInputChange(e, 'add')}
-                  required
-                />
-              </div>
-            </div>
-            <div className="row">
-              <div className="col-md-6 mb-3">
-                <label htmlFor="contact_number" className="form-label">Contact Number</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  id="contact_number"
-                  name="contact_number"
-                  value={newStudent.contact_number}
-                  onChange={(e) => handleInputChange(e, 'add')}
-                  required
-                />
-              </div>
-              <div className="col-md-6 mb-3">
-                <label htmlFor="program" className="form-label">Program</label>
-                <select
-                  className="form-select"
-                  id="program"
-                  name="program"
-                  value={newStudent.program}
-                  onChange={(e) => handleInputChange(e, 'add')}
-                  required
-                >
-                  <option value="">Select Program</option>
-                  <option value="BSIT">BSIT</option>
-                  <option value="BSCS">BSCS</option>
-                  {/* Add other programs here */}
-                </select>
-              </div>
-            </div>
-            <div className="row">
-              <div className="col-md-6 mb-3">
-                <label htmlFor="year_level" className="form-label">Year Level</label>
-                <select
-                  className="form-select"
-                  id="year_level"
-                  name="year_level"
-                  value={newStudent.year_level}
-                  onChange={(e) => handleInputChange(e, 'add')}
-                  required
-                >
-                  <option value="">Select Year Level</option>
-                  <option value="1st year">1st year</option>
-                  <option value="2nd year">2nd year</option>
-                  <option value="3rd year">3rd year</option>
-                  <option value="4th year">4th year</option>
-                </select>
-              </div>
-              <div className="col-md-6 mb-3">
-              <label htmlFor="section" className="form-label">Section</label>
-              <input
-                type="text"
-                className="form-control"
-                id="section"
-                name="section"
-                value={newStudent.section}
-                onChange={(e) => {
-                  const value = e.target.value.toUpperCase().slice(0, 1); // Format the value
-                  setNewStudent(prevState => ({
-                    ...prevState,
-                    section: value, // Update state with the formatted value
-                  }));
-                }}
-                maxLength={1}
-                required
-              />
-              </div>
-            </div>
-            <div className="row">
-              <div className="col-md-6 mb-3">
-                <label htmlFor="topics_or_subjects" className="form-label">Subjects</label>
-                <select
-                  className="form-select"
-                  id="topics_or_subjects"
-                  name="topics_or_subjects"
-                  value={newStudent.topics_or_subjects}
-                  onChange={(e) => handleInputChange(e, 'add')}
-                  required
-                >
-                  <option value="">Select Subject</option>
-                  <option value="Integrative Programming">Integrative Programming</option>
-                  <option value="Technopreneurship">Technopreneurship</option>
-                  <option value="Advanced Database and Systems">Advanced Database and Systems</option>
-                  <option value="Capstone 1">Capstone 1</option>
-                </select>
-              </div>
-
-              <div className="col-md-6 mb-3">
-                <label htmlFor="academic_year" className="form-label">Academic Year</label>
-                <small> "2014-2015"</small>
-                <input
-                  type="text"
-                  className="form-control"
-                  id="academic_year"
-                  name="academic_year"
-                  value={newStudent.academic_year}
-                  onChange={(e) => handleInputChange(e, 'add')}
-                  pattern="\d{4}-\d{4}"
-                  title="Enter the academic year in YYYY-YYYY format"
-                  required
-                />
-              </div>
-            </div>
-            <button type="submit" className="btn btn-primary">Add Student</button>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-
 
 
 {/* Table with Sorting */}
@@ -945,228 +677,230 @@ type="submit" className="btn btn-primary mb-3" onClick={handleOpenAddModal} >   
 <thead>
   <tr>
     <th className="bg-light" onClick={() => handleSort('school_id')}>
-      <div className="sort-label d-flex align-items-center justify-content-start">
-        <FontAwesomeIcon icon={faIdBadge} className="me-2" />
-        ID
-
+      <div className="sort-label">
+        #
+        <span className="sort-arrows">
+          <FontAwesomeIcon 
+            icon={faChevronUp} 
+            className={`arrow asc ${sortConfig.key === 'school_id' && sortConfig.direction === 'asc' ? 'active' : ''}`}
+          />
+          <FontAwesomeIcon 
+            icon={faChevronDown} 
+            className={`arrow desc ${sortConfig.key === 'school_id' && sortConfig.direction === 'desc' ? 'active' : ''}`}
+          />
+        </span>
       </div>
     </th>
     <th className="bg-light" onClick={() => handleSort('name')}>
-      <div className="sort-label d-flex align-items-center justify-content-start">
-        <FontAwesomeIcon icon={faUser} className="me-2" />
+      <div className="sort-label">
         Name
-
+        <span className="sort-arrows">
+          <FontAwesomeIcon 
+            icon={faChevronUp} 
+            className={`arrow asc ${sortConfig.key === 'name' && sortConfig.direction === 'asc' ? 'active' : ''}`}
+          />
+          <FontAwesomeIcon 
+            icon={faChevronDown} 
+            className={`arrow desc ${sortConfig.key === 'name' && sortConfig.direction === 'desc' ? 'active' : ''}`}
+          />
+        </span>
       </div>
     </th>
     <th className="bg-light" onClick={() => handleSort('program')}>
-      <div className="sort-label d-flex align-items-center justify-content-start">
-        <FontAwesomeIcon icon={faBook} className="me-2" />
-        Program
-
+      <div className="sort-label">
+        Email
+        <span className="sort-arrows">
+          <FontAwesomeIcon 
+            icon={faChevronUp} 
+            className={`arrow asc ${sortConfig.key === 'program' && sortConfig.direction === 'asc' ? 'active' : ''}`}
+          />
+          <FontAwesomeIcon 
+            icon={faChevronDown} 
+            className={`arrow desc ${sortConfig.key === 'program' && sortConfig.direction === 'desc' ? 'active' : ''}`}
+          />
+        </span>
       </div>
     </th>
     <th className="bg-light" onClick={() => handleSort('year_level')}>
-      <div className="sort-label d-flex align-items-center justify-content-start">
-        <FontAwesomeIcon icon={faCalendarAlt} className="me-2" />
-        Year
-
+      <div className="sort-label">
+        Contact Number
+        <span className="sort-arrows">
+          <FontAwesomeIcon 
+            icon={faChevronUp} 
+            className={`arrow asc ${sortConfig.key === 'year_level' && sortConfig.direction === 'asc' ? 'active' : ''}`}
+          />
+          <FontAwesomeIcon 
+            icon={faChevronDown} 
+            className={`arrow desc ${sortConfig.key === 'year_level' && sortConfig.direction === 'desc' ? 'active' : ''}`}
+          />
+        </span>
       </div>
     </th>
-    <th className="bg-light" style={{ width: '130px' }} onClick={() => handleSort('section')}>
-      <div className="sort-label d-flex align-items-center justify-content-start">
-        <FontAwesomeIcon icon={faBuilding} className="me-2" />
-        Section
-
-      </div>
-    </th>
-    <th className="bg-light">
-      <div className="sort-label d-flex align-items-center justify-content-start">
-        <FontAwesomeIcon icon={faCogs} className="me-2" />
-        Actions
-      </div>
-    </th>
+    <th className="bg-light">Actions</th>
   </tr>
 </thead>
 
-
-  <tbody>
-    {currentStudents.length > 0 ? (
-      currentStudents.map(student => (
-        <tr key={student.school_id}>
-          <td>{student.school_id}</td>
-          <td>{student.name}</td>
-          <td>{student.program}</td>
-          <td>{student.year_level}</td>
-          <td>{student.section}</td>
+<tbody>
+            {faculty.length > 0 ? (
+              faculty.map((facultyMember, index) => (
+                <tr key={facultyMember.school_id}>
+                  <td style={{ width: '50px' }}>{index + 1}</td> {/* Adjust width for index */}  
+                  <td>{facultyMember.name}</td>
+                  <td>{facultyMember.email}</td>
+                  <td>{facultyMember.contact_number}</td>
+             
+                  {/* <td>{facultyMember.Subjects}</td> */}
           <td>
 
 
-{/* View Button */}
-<button 
-  className="btn btn-success btn-sm me-2" 
-  onClick={() => handleView(student.school_id)} 
-  title="View Student">
-  <FontAwesomeIcon icon={faEye} />
-</button>
- {/* View Modal */}
- {showViewModal && selectedStudent && (
-        <div className="modal show" style={{ display: "block" }} onClick={handleCloseViewModal}>
-          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-content">
-              <div className="modal-header">
-              <h4 className="modal-title" style={{ fontFamily: 'Poppins, sans-serif', fontWeight: 800, color: 'black', textTransform: 'uppercase' }}><p>{selectedStudent.name}</p></h4>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={handleCloseViewModal}
-                />
-              </div>
-              <div className="modal-body">
-                <p><strong>ID:</strong> {selectedStudent.school_id}</p>
-                <p><strong>Name:</strong> {selectedStudent.name}</p>
-                <p><strong>Email:</strong> {selectedStudent.email}</p>
-                <p><strong>Program:</strong> {selectedStudent.program}</p>
-                <p><strong>Year Level:</strong> {selectedStudent.year_level}</p>
-                <p><strong>Section:</strong> {selectedStudent.section}</p>     
-                <p><strong>Academic Year:</strong> {selectedStudent.academic_year}</p>
-                <p><strong>Contact Number:</strong> {selectedStudent.contact_number}</p>
-                <p><strong>Subjects:</strong> {selectedStudent.topics_or_subjects.join(', ')}</p>
+          <div>
+      {/* Button to open the modal */}
+      <button
+        style={{
+          backgroundColor: '#007bff',
+          color: '#fff',
+          border: 'none',
+          padding: '10px 15px',
+          borderRadius: '5px',
+          cursor: 'pointer',
+          fontWeight: 'bold',
+        }}
+        onClick={() => setShowModal(true)} // Show modal on click
+      >
+        + Create Appointment
+      </button>
 
-              </div>
-            </div>
-          </div>
-        </div>
-)}
-
-{/* Update Button */}
-<button
-  className="btn btn-warning btn-sm me-2"
-  onClick={() => {
-    console.log('Student before setting:', student); // Log student data before setting
-    setSelectedStudent(student); // Ensure student data is passed correctly
-    setShowModal(true);
-   
-  }}
->
-  <FontAwesomeIcon icon={faEdit} />
-</button>
-{/* Update Modal */}
+  {/* Modal */}
 {showModal && (
-  <div className="modal show d-block" tabIndex="-1" role="dialog">
-    <div className="modal-dialog modal-lg" role="document">
-      <div className="modal-content">
-        <div className="modal-header" >
-          
-          <h5 className="modal-title">Edit Student</h5>
-          <button
-            type="button"
-            className="btn-close"
-            onClick={() => {
-              setShowModal(false);
-              setSelectedStudent(null); // Reset selected student on modal close
-            }}
-            aria-label="Close"
-          ></button>
+  <div
+    style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1050,
+   
+    }}
+  >
+    <div
+      style={{
+        background: '#fff',
+        borderRadius: '8px',
+        maxWidth: '700px', // Adjusts max-width for modal size
+        width: '90%',
+        maxHeight: '80%', // Limits height to 80% of viewport
+        overflowY: 'auto', // Adds scroll when content overflows
+        padding: '20px',
+        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
+      }}
+    >
+      <div
+        style={{
+          position: 'relative',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: '#f0f8ff',
+          borderRadius: '8px',
+          padding: '20px',
+          boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.1)',
+          border: '1px solid #ccc',
+        }}
+      >
+        {/* Left Section - Appointment Details */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <h4 style={{ margin: 0, fontWeight: 'bold' }}>Create Appointment</h4>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+            <tbody>
+              <tr>
+                <td style={{ fontWeight: 'bold', padding: '8px', borderBottom: '1px solid #ccc' }}>Name</td>
+                <td style={{ padding: '8px', borderBottom: '1px solid #ccc' }}>Jhon Lloyd Rojo </td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 'bold', padding: '8px', borderBottom: '1px solid #ccc' }}>Subjects</td>
+                <td style={{ padding: '8px', borderBottom: '1px solid #ccc' }}>Technopreneurship, Database, Programming</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 'bold', padding: '8px', borderBottom: '1px solid #ccc' }}>Available Time</td>
+                <td style={{ padding: '8px', borderBottom: '1px solid #ccc' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Time Slot</th>
+                        <th style={{ borderBottom: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Day(s)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style={{ padding: '8px', borderBottom: '1px solid #ccc' }}>9:00 AM - 11:00 AM</td>
+                        <td style={{ padding: '8px', borderBottom: '1px solid #ccc' }}>Monday, Wednesday, Friday</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '8px', borderBottom: '1px solid #ccc' }}>2:00 PM - 3:00 PM</td>
+                        <td style={{ padding: '8px', borderBottom: '1px solid #ccc' }}>Monday, Wednesday, Friday</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <div className="modal-body">
-          <form onSubmit={handleUpdateSubmit}>
-            <div className="row">
-              {/* Left Column */}
-              <div className="col-md-6">
-                <div className="mb-3">
-                  <label htmlFor="updateSchoolId" className="form-label">
-                    School ID
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    id="updateSchoolId"
-                    name="schoolId"
-                    value={formData.schoolId || ''}
-                    onChange={handleInputChangePut}
-                    required
-                    readOnly
-                  />
-                </div>
 
-                <div className="mb-3">
-                  <label htmlFor="updateName" className="form-label">
-                    Name
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    id="updateName"
-                    name="name"
-                    value={formData.name || ''}
-                    onChange={handleInputChangePut}
-                    required
-                  />
-                </div>
+        {/* Close Button */}
+        <button
+          style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            background: 'none',
+            border: 'none',
+            fontSize: '1.5rem',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            color: '#333',
+          }}
+          title="Close"
+          onClick={() => setShowModal(false)} // Close modal on click
+        >
+          &times;
+        </button>
+      </div>
 
-                <div className="mb-3">
-                  <label htmlFor="updateEmail" className="form-label">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    className="form-control"
-                    id="updateEmail"
-                    name="email"
-                    value={formData.email || ''}
-                    onChange={handleInputChangePut}
-                    required
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label htmlFor="updateContactNumber" className="form-label">
-                    Contact Number
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    id="updateContactNumber"
-                    name="contactNumber"
-                    value={formData.contactNumber || ''}
-                    onChange={handleInputChangePut}
-                    required
-                  />
-                </div>
+      <hr style={{ margin: '15px 0' }} />
+      <div>
+        <form>
+          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+            {/* Left Column */}
+            <div style={{ flex: 1, minWidth: '300px' }}>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ fontWeight: 'bold' }}>School ID</label>
+                <input type="text" className="form-control" required />
               </div>
-
-              {/* Right Column */}
-              <div className="col-md-6">
-                <div className="mb-3">
-                  <label htmlFor="updateProgram" className="form-label">
-                    Program
-                  </label>
-                  <select
-                    className="form-select"
-                    id="updateProgram"
-                    name="program"
-                    value={formData.program || ''}
-                    onChange={handleInputChangePut}
-                    required
-                  >
-                    <option value="">Select Program</option>
-                    <option value="BSIT">BSIT</option>
-                    <option value="BSCS">BSCS</option>
-                  </select>
-                </div>
-
-                <div className="mb-3">
-                <label htmlFor="updateYearLevel" className="form-label">
-                  Year Level
-                </label>
-                <select
-                  className="form-select"
-                  id="updateYearLevel"
-                  name="yearLevel"
-                  value={formData.yearLevel || ''}
-                  onChange={handleInputChangePut}
-                  required
-                >
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ fontWeight: 'bold' }}>Name</label>
+                <input type="text" className="form-control" required />
+              </div>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ fontWeight: 'bold' }}>Email</label>
+                <input type="email" className="form-control" required />
+              </div>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ fontWeight: 'bold' }}>Program</label>
+                <select className="form-select" required>
+                  <option value="">Select Program</option>
+                  <option value="BSIT">BSIT</option>
+                  <option value="BSCS">BSCS</option>
+                </select>
+              </div>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ fontWeight: 'bold' }}>Year Level</label>
+                <select className="form-select" required>
                   <option value="">Select Year Level</option>
                   <option value="1st year">1st year</option>
                   <option value="2nd year">2nd year</option>
@@ -1174,88 +908,89 @@ type="submit" className="btn btn-primary mb-3" onClick={handleOpenAddModal} >   
                   <option value="4th year">4th year</option>
                 </select>
               </div>
-
-                <div className="mb-3">
-                  <label htmlFor="updateSection" className="form-label">
-                    Section
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    id="updateSection"
-                    name="section"
-                    value={formData.section || ''}
-                    onChange={(e) => {
-                      const value = e.target.value.toUpperCase().slice(0, 1);
-                      setFormData((prevState) => ({
-                        ...prevState,
-                        section: value,
-                      }));
-                    }}
-                    maxLength={1}
-                    required
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label htmlFor="updateSubjects" className="form-label">
-                    Subjects
-                  </label>
-                  <select
-                    className="form-select"
-                    id="updateSubjects"
-                    name="topicsOrSubjects"
-                    value={Array.isArray(formData.topicsOrSubjects)
-                      ? formData.topicsOrSubjects[0] // Get the first element if it's an array
-                      : formData.topicsOrSubjects || ''} // Use the value directly if it's not an array
-                    onChange={handleInputChangePut}
-                    required
-                  >
-                    <option value="Integrative Programming">Integrative Programming</option>
-                    <option value="Technopreneurship">Technopreneurship</option>
-                    <option value="Advanced Database and Systems">Advanced Database and Systems</option>
-                    <option value="Capstone 1">Capstone 1</option>
-                  </select>
-                </div>
-
-                <div className="mb-3">
-                  <label htmlFor="updateAcademicYear" className="form-label">
-                    Academic Year
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    id="updateAcademicYear"
-                    name="academicYear"
-                    value={formData.academicYear || ''}
-                    onChange={handleInputChangePut}
-                    required
-                  />
-                </div>
-              </div>
             </div>
 
-            <button type="submit" className="btn btn-warning">
-              Update Student
-            </button>
-          </form>
-        </div>
+            {/* Right Column */}
+            <div style={{ flex: 1, minWidth: '300px' }}>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ fontWeight: 'bold' }}>Section</label>
+                <input type="text" className="form-control" required />
+              </div>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ fontWeight: 'bold' }}>Subject</label>
+                <input type="text" className="form-control" required />
+              </div>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ fontWeight: 'bold' }}>Section Code</label>
+                <input type="text" className="form-control" required />
+              </div>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ fontWeight: 'bold' }}>Date</label>
+                <input
+                  type="date"
+                  className="form-control"
+                  required
+                  style={{
+                    padding: '8px',
+                    borderRadius: '4px',
+                    border: '1px solid #ccc',
+                    width: '100%',
+                  }}
+                />
+              </div>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ fontWeight: 'bold' }}>Time</label>
+                <input
+                  type="time"
+                  className="form-control"
+                  required
+                  style={{
+                    padding: '8px',
+                    borderRadius: '4px',
+                    border: '1px solid #ccc',
+                    width: '100%',
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+          <button
+            type="submit"
+            style={{
+              backgroundColor: '#007bff',
+              color: '#fff',
+              border: 'none',
+              padding: '10px 15px',
+              borderRadius: '5px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            Submit
+          </button>
+        </form>
       </div>
     </div>
   </div>
 )}
 
 
-{/* Delete Button */}
-<button 
-  className="btn btn-danger btn-sm" 
-  onClick={() => handleDelete(student.school_id)} 
-  title="Delete Student"
->
-  <FontAwesomeIcon icon={faTrash} />
-</button>
-
-
+      {/* CSS Animation */}
+      {/* <style>
+        {`
+          @keyframes popUp {
+            from {
+              transform: scale(0.5);
+              opacity: 0;
+            }
+            to {
+              transform: scale(1);
+              opacity: 1;
+            }
+          }
+        `}
+      </style> */}
+    </div>
 
 
 
@@ -1377,10 +1112,12 @@ type="submit" className="btn btn-primary mb-3" onClick={handleOpenAddModal} >   
 
 
 </table>
+
       {/* <hr className="my-4" />
       <div className="row">
       </div> */}
-    </div>                  
+    </div>     
+                 
           </div>
           <div className="content-backdrop fade" />
         </div>
@@ -1394,4 +1131,4 @@ type="submit" className="btn btn-primary mb-3" onClick={handleOpenAddModal} >   
   )
 }
 
-export default AppUserList
+export default StudentConsultation

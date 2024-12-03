@@ -1,58 +1,52 @@
+// app.js
+
+// Required modules
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
-const userRoutes = require('./routes/userRoutes'); // Use only userRoutes for auth and user management
-
+const mongoose = require('mongoose');
+const userRoutes = require('./routes/userRoutes'); // User routes
+const authRoutes = require('./routes/authRoutes'); // Authentication routes
 require('dotenv').config();
 
-const mongoose = require('mongoose');
-
+// Initialize express app
 const app = express();
 const PORT = process.env.PORT || 5000;
-const dbURI = process.env.MONGODB_URI; // Get the connection string from the .env file
+const dbURI = process.env.MONGODB_URI;
 
-mongoose.connect(dbURI)
-  .then(() => {
-    console.log('MongoDB connected successfully');
-  })
-  .catch(err => {
-    console.error('MongoDB connection error:', err);
-  });
+// CORS configuration
+const corsOptions = {
+  origin: 'http://localhost:5173', // Allow requests from the frontend
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Explicitly allow PUT
+  allowedHeaders: ['Content-Type', 'Authorization'], // Allow headers
+  preflightContinue: false,  // Pass the OPTIONS request to the next handler
+  optionsSuccessStatus: 204, // For legacy browsers that send an OPTIONS request
+};
 
 // Middleware
-app.use(cors()); // Allow CORS
-app.use(bodyParser.json()); // Parse JSON bodies
+app.use(cors(corsOptions)); // Apply CORS settings
+app.use(express.json()); // Parse incoming request bodies as JSON
+
+// Set COOP and COEP headers to prevent cross-origin issues
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  next();
+});
+
+// Connect to MongoDB
+mongoose.connect(dbURI)
+  .then(() => console.log('MongoDB connected successfully'))
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // Routes
-app.use('/api', userRoutes); // Use userRoutes for all authentication and user management
-// Route to get total number of students
+app.use('/api', userRoutes); // Routes for user-related functionality
+app.use('/api/auth', authRoutes); // Authentication routes (if needed)
 
 app.get('/api/test', (req, res) => {
-    res.send('API is running');
-});
-app.get('/api/students', async (req, res) => {
-  try {
-    const students = await Student.find().sort({ createdAt: -1 });  // Sort by creation date in descending order
-    res.json(students);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching students' });
-  }
+  res.send('API is running');
 });
 
+// Start the server
 app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-});
-
-app.post('/api/register/student', async (req, res) => {
-  const studentData = req.body;
-  console.log('Received student data:', studentData);  // Log the data received from frontend
-  try {
-    // Proceed with inserting the student data into the database
-    const newStudent = new Student(studentData);
-    await newStudent.save();
-    res.status(201).json({ message: 'Student added successfully' });
-  } catch (error) {
-    console.error('Error registering student:', error);  // Log error for debugging
-    res.status(500).send('Internal server error man');  // Return a more descriptive error response
-  }
+  console.log(`Server is running on http://localhost:${PORT}`);
 });

@@ -1,11 +1,13 @@
 const express = require('express');
-const router = express.Router();
 const { OAuth2Client } = require('google-auth-library');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User'); // Assuming you have a User model
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID); // Use your Google client ID from .env
 const userController = require('../controllers/userController');  // Adjust the path if needed
+const { verifyGoogleToken } = require('../controllers/googleAuthController');  // Import the verifyGoogleToken function
 
+
+const router = express.Router();
 // Import express-validator
 const { body, validationResult } = require('express-validator');
 
@@ -14,16 +16,22 @@ const {
     createUser,
     loginUser,
     getAllUsers,
-    getUserById,
-    updateUserById,
-    deleteUserById,
+    getUserBySchoolId,
+    updateUserBySchoolId,
+    deleteUserBySchoolId,
     getTotalUsers,
     registerUser,
     registerStudent, // Add registerStudent function here
+    getTotalFirstYearStudents,
+    getTotalSecondYearStudents,
+    getTotalThirdYearStudents,
+    getTotalFourthYearStudents,
+    getTotalStudents,
+    getTotalFaculty,
 } = require('../controllers/userController');
 
 // Route to register a new student
-router.post('/register/student', userController.registerStudent); // Register student route
+router.post('/register/student', registerStudent); // Register student route
 
 // Route to get all students
 router.get('/students', async (req, res) => {
@@ -41,10 +49,10 @@ router.get('/students', async (req, res) => {
 });
 
 // Route to get the total number of students in each year
-router.get('/students/total/first-year', userController.getTotalFirstYearStudents);
-router.get('/students/total/second-year', userController.getTotalSecondYearStudents);
-router.get('/students/total/third-year', userController.getTotalThirdYearStudents);
-router.get('/students/total/fourth-year', userController.getTotalFourthYearStudents);
+router.get('/students/total/first-year', getTotalFirstYearStudents);
+router.get('/students/total/second-year', getTotalSecondYearStudents);
+router.get('/students/total/third-year', getTotalThirdYearStudents);
+router.get('/students/total/fourth-year', getTotalFourthYearStudents);
 
 // Google Login route
 router.post('/google-login', async (req, res) => {
@@ -130,41 +138,76 @@ router.post('/forgot-password', async (req, res) => {
     }
 });
 
-router.put('/api/users/:school_id', async (req, res) => {
-    const { school_id } = req.params;
-    console.log('School ID:', school_id);  // Log the school_id
-    console.log('Request Body:', req.body);  // Log the data sent in the body
-    
-    const updatedData = req.body;
-  
+// Admin-only route to get all users (add middleware for authentication if necessary)
+router.get('/users', getAllUsers); //!
+router.get('/users/total', getTotalUsers);//!
+
+// Route to get total number of students and faculty
+router.get('/students/total', getTotalStudents);//!
+router.get('/faculty/total', getTotalFaculty);
+
+// Routes for user management by schoolID
+router.get('/users/:school_id', getUserBySchoolId);
+
+router.delete('/users/:school_id', deleteUserBySchoolId);
+
+// Consolidated route for updating user by school_id
+router.put('/users/:school_id', updateUserBySchoolId);
+// POST route for handling Google login
+router.post('/google-login', verifyGoogleToken);
+
+
+// Route to get all faculty members
+router.get('/faculty', async (req, res) => {
     try {
-      const student = await User.findOneAndUpdate({ school_id }, updatedData, {
-        new: true,
-        runValidators: true,
-      });
-  
-      if (!student) {
-        return res.status(404).json({ message: 'User not found' });
+      // Find all users with the role of 'faculty'
+      const facultyMembers = await User.find({ role: 'faculty' });
+      
+      // If no faculty members found
+      if (facultyMembers.length === 0) {
+        return res.status(404).json({ message: 'No faculty members found' });
       }
-  
-      res.json(student);
+      
+      // Send the faculty data as JSON
+      res.json(facultyMembers);
     } catch (error) {
-      console.error('Error updating student:', error);
-      res.status(500).json({ message: 'Server error' });
+      console.error('Error fetching faculty:', error);
+      res.status(500).json({ message: 'Error fetching faculty data', error });
     }
   });
   
-// Admin-only route to get all users (add middleware for authentication if necessary)
-router.get('/users', getAllUsers);
-router.get('/users/total', getTotalUsers);
 
-// Route to get total number of students and faculty
-router.get('/students/total', userController.getTotalStudents);
-router.get('/faculty/total', userController.getTotalFaculty);
-
-// Routes for user management by schoolID
-router.get('/users/:id', getUserById);
-router.put('/users/:id', updateUserById);
-router.delete('/users/:id', deleteUserById);
-
+  // Example array to hold faculty data, normally you'd connect to a database
+let facultyData = [];
+router.post('/addfaculty', (req, res) => {
+    try {
+      // Get the data sent in the request body
+      let facultyList = req.body;
+  
+      // If the data is not an array, wrap it in an array to treat it as a single item
+      if (!Array.isArray(facultyList)) {
+        facultyList = [facultyList];
+      }
+  
+      // Validate that each item in the list contains required fields
+      facultyList.forEach(faculty => {
+        if (!faculty.name || !faculty.email || !faculty.department) {
+          return res.status(400).json({ error: 'Faculty data missing required fields.' });
+        }
+      });
+  
+      // Here we would typically save the data to a database (MongoDB, SQL, etc.)
+      // For now, we're pushing it to an in-memory array
+      facultyData.push(...facultyList);
+  
+      // Respond with a success message and the saved data
+      res.status(201).json({
+        message: 'Faculty data successfully added.',
+        data: facultyList
+      });
+    } catch (error) {
+      // Handle unexpected errors
+      res.status(500).json({ error: 'An error occurred while processing your request.' });
+    }
+  });
 module.exports = router;

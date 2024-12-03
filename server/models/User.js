@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema({
     academic_year: { type: String, required: true, match: /^\d{4}-\d{4}$/ },
     account_agreement: { type: Boolean, required: false },
     google_user_id: { type: String, unique: true, sparse: true },
-    role: { type: String, default: 'student' },
+    role: { type: String, required: true, enum: ['student', 'faculty'] }, // Role field
 }, { timestamps: true });  // timestamps will auto-handle createdAt and updatedAt fields
 
 const User = mongoose.model('User', userSchema);

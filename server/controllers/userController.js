@@ -22,6 +22,7 @@ exports.registerUser = async (req, res) => {
     }
 };
 
+// Register a new student
 exports.registerStudent = async (req, res) => {
     const { school_id, name, email, password, contact_number, program, year_level, section, topics_or_subjects, academic_year, account_agreement, google_user_id } = req.body;
 
@@ -61,9 +62,6 @@ exports.registerStudent = async (req, res) => {
     }
 };
 
-
-
-
 // User login
 exports.loginUser = async (req, res) => {
     const { email, password } = req.body;
@@ -86,7 +84,6 @@ exports.loginUser = async (req, res) => {
     }
 };
 
-
 // Get all users
 exports.getAllUsers = async (req, res) => {
     try {
@@ -97,54 +94,75 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
-
-// Get a user by school_id
-exports.getUserById = async (req, res) => {
-    try {
-        const user = await User.findOne({ school_id: req.params.id });  // Use school_id instead of _id
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        res.status(200).json(user);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-
-
+// Update user by school_id
 exports.updateUserById = async (req, res) => {
     const { school_id } = req.params;
     const updatedData = req.body;
-  
+
+    console.log('School ID from request params:', school_id); // Log the school_id
+    console.log('Updated data:', updatedData); // Log the updated data
+
     try {
-      const user = await User.findOneAndUpdate({ school_id }, updatedData, {
-        new: true, // Returns the updated document
-        runValidators: true, // Applies any schema validation
-      });
-  
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-  
-      res.json(user);
-    } catch (error) {
-      console.error('Error updating user:', error);
-      res.status(500).json({ message: 'Server error' });
-    }
-  };
-// Delete a user by school_id
-exports.deleteUserById = async (req, res) => {
-    try {
-        const user = await User.findOneAndDelete({ school_id: req.params.id }); // Use school_id
+        const user = await User.findOneAndUpdate({ school_id }, updatedData, {
+            new: true, // Returns the updated document
+            runValidators: true, // Applies any schema validation
+        });
+
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
-        res.status(204).send(); // No content (successful deletion)
+
+        res.json(user);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error('Error updating user:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 };
+// Controller for updating user by school_id
+exports.updateUserBySchoolId = async (req, res) => {
+    const { school_id } = req.params;
+    const updatedData = req.body;
+
+    console.log('School ID from request params:', school_id); // Should log the school_id
+    console.log('Updated data:', updatedData); // Should log the data to be updated
+
+    try {
+        const user = await User.findOneAndUpdate({ school_id }, updatedData, {
+            new: true, // Return updated document
+            runValidators: true, // Validate schema
+        });
+
+        if (!user) {
+            console.log(`No user found with school_id: ${school_id}`);
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        console.log('Updated user:', user);  // Log the updated user data
+        res.json(user);  // Send the updated user data as response
+    } catch (error) {
+        console.error('Error updating user:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+  
+exports.deleteUserBySchoolId = async (req, res) => {
+    const { school_id } = req.params; // Extract school_id from request params
+
+    try {
+        // Find and delete the user by school_id
+        const result = await User.deleteOne({ school_id });
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ message: 'User with this school ID not found' });
+        }
+        res.status(200).json({ message: 'User deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        res.status(500).json({ message: 'Failed to delete user', error });
+    }
+};
+
+
 
 // Function to get the total number of users
 exports.getTotalUsers = async (req, res) => {
@@ -212,7 +230,7 @@ exports.getTotalThirdYearStudents = async (req, res) => {
     }
 };
 
-// Controller to get the total number of 3rd-year students
+// Controller to get the total number of 4th-year students
 exports.getTotalFourthYearStudents = async (req, res) => {
     try {
         const totalFourthYearStudents = await User.countDocuments({ year_level: '4th year' });
@@ -220,5 +238,21 @@ exports.getTotalFourthYearStudents = async (req, res) => {
     } catch (error) {
         console.error('Error fetching 4th year students:', error);
         res.status(500).json({ message: 'Error fetching 4th year students' });
+    }
+};
+
+
+exports.getUserBySchoolId = async (req, res) => {
+    const { school_id } = req.params;
+
+    try {
+        const user = await User.findOne({ school_id });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        res.status(200).json(user);
+    } catch (error) {
+        console.error('Error fetching user by school_id:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 };
