@@ -138,7 +138,6 @@ router.post('/forgot-password', async (req, res) => {
     }
 });
 
-<<<<<<< HEAD
 // Admin-only route to get all users (add middleware for authentication if necessary)
 router.get('/users', getAllUsers); //!
 router.get('/users/total', getTotalUsers);//!
@@ -177,23 +176,6 @@ router.get('/faculty', async (req, res) => {
     }
   });
   
-=======
-// Route to update user by school_id
-router.put('/users/:school_id', updateUserById);  // Replaced with controller function
-
-// Admin-only route to get all users (add middleware for authentication if necessary)
-router.get('/users', getAllUsers);
-router.get('/users/total', getTotalUsers);
-
-// Route to get total number of students and faculty
-router.get('/students/total', userController.getTotalStudents);
-router.get('/faculty/total', userController.getTotalFaculty);
-
-// Routes for user management by schoolID
-router.get('/users/:id', getUserById);
-router.put('/users/:id', updateUserById);
-router.delete('/users/:id', deleteUserById);
->>>>>>> QA
 
   // Example array to hold faculty data, normally you'd connect to a database
 let facultyData = [];
