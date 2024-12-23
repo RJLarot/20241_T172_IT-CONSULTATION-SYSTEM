@@ -94,10 +94,30 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
+<<<<<<< HEAD
 // Update user by school_id
+=======
+
+// Get a user by school_id
+exports.getUserById = async (req, res) => {
+    try {
+        const user = await User.findOne({ school_id: req.params.id });  // Use school_id instead of _id
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        res.status(200).json(user);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+>>>>>>> QA
 exports.updateUserById = async (req, res) => {
     const { school_id } = req.params;
+    console.log('School ID:', school_id);  // Log the school_id received in the request
+
     const updatedData = req.body;
+<<<<<<< HEAD
 
     console.log('School ID from request params:', school_id); // Log the school_id
     console.log('Updated data:', updatedData); // Log the updated data
@@ -108,6 +128,30 @@ exports.updateUserById = async (req, res) => {
             runValidators: true, // Applies any schema validation
         });
 
+=======
+    try {
+        const user = await User.findOneAndUpdate({ school_id }, updatedData, {
+            new: true,
+            runValidators: true,
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json(user);
+    } catch (error) {
+        console.error('Error updating user:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+
+// Delete a user by school_id
+exports.deleteUserById = async (req, res) => {
+    try {
+        const user = await User.findOneAndDelete({ school_id: req.params.id }); // Use school_id
+>>>>>>> QA
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
