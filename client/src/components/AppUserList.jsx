@@ -273,7 +273,6 @@ const handleInputChangePut = (e) => {
   }));
  
 };
-<<<<<<< HEAD
 
 const handleCloseUpdateModal = () => {
   setShowModal(false); // Close the modal
@@ -377,27 +376,6 @@ const handleUpdateSubmit = async (event) => {
         timerProgressBar: true, // Optionally show a progress bar while waiting
       });
     }
-=======
-//UPDATE==========================
-const handleUpdateSubmit = async (updatedUser) => {
-  try {
-      const response = await fetch(`http://localhost:5000/api/users/${updatedUser.school_id}`, {
-          method: 'PUT',
-          headers: {
-              'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(updatedUser),
-      });
-
-      if (!response.ok) {
-          throw new Error('Failed to update student');
-      }
-
-      const result = await response.json();
-      console.log('Student updated:', result);
-  } catch (error) {
-      console.error('Error updating student:', error);
->>>>>>> QA
   }
 };
 
